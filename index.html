@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Katana Aim Lab </title>
+<title>Katana Aim Lab ⚔️</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -48,8 +48,22 @@
         box-shadow: 0 0 10px #ff00ff;
     }
 
-    #ui { top: 20px; left: 20px; z-index: 100; text-shadow: 0 0 10px #ff00ff; }
-    .value { color: #00ffff; text-shadow: 0 0 15px #00ffff; }
+    #ui { 
+        position: fixed;
+        top: 20px; 
+        left: 20px; 
+        z-index: 100; 
+        text-shadow: 0 0 10px #ff00ff; 
+        pointer-events: none;
+    }
+    .stat { margin: 12px 0; }
+    .label { font-size: 0.9rem; color: #aaaaaa; }
+    .value { 
+        font-size: 1.8rem; 
+        color: #00ffff; 
+        text-shadow: 0 0 15px #00ffff; 
+        font-weight: bold;
+    }
 
     #reactionResult { 
         position: fixed; inset: 0; background: rgba(15,0,25,0.9); display: none; flex-direction: column;
@@ -94,10 +108,10 @@
     }
     .mode-btn:hover, .difficulty-btn:hover { background: #ff00ff; color: #0f0019; border-color: #00ffff; box-shadow: 0 0 60px #00ffff; transform: scale(1.05); }
 
-    .settings label { font-family: 'Press Start 2P', cursive; color: #ffff00; text-shadow: 2px 2px #ff00ff; }
+    .settings label { font-family: 'Press Start 2P', cursive; color: #ffff00; text-shadow: 2px 2px #ff00ff; margin-bottom: 10px; display: block; }
     input[type="color"] { width: 100px; height: 100px; border: 5px dashed #00ffff; border-radius: 0; cursor: pointer; background: conic-gradient(#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000); box-shadow: 0 0 40px #00ffff; }
 
-    /* NEW: Back to Menu Button */
+    /* Back to Menu Button */
     #backToMenuBtn {
         position: fixed;
         bottom: 30px;
@@ -112,7 +126,7 @@
         color: #00ffff;
         cursor: pointer;
         box-shadow: 0 0 25px #ff00ff;
-        display: none; /* Hidden by default */
+        display: none;
         pointer-events: auto;
     }
     #backToMenuBtn:hover {
@@ -130,12 +144,11 @@
 <div id="crosshair"><div id="crosshair-dot"></div></div>
 <button id="fullscreenBtn">FULLSCREEN</button>
 
-<!-- NEW: Back to Menu Button -->
 <button id="backToMenuBtn">BACK TO MENU</button>
 
 <div id="menuScreen">
     <h1>KATANA AIM LAB</h1>
-    <p style="font-family:'Press Start 2P';font-size:1.2rem;color:#00ffff;text-shadow:0 0 15px #ff00ff;">TRAIN YOUR PRECISION </p>
+    <p style="font-family:'Press Start 2P';font-size:1.2rem;color:#00ffff;text-shadow:0 0 15px #ff00ff;">TRAIN YOUR PRECISION ⚔️</p>
     <div class="settings">
         <label>CROSSHAIR COLOR</label>
         <input type="color" id="crosshairPicker" value="#ff00ff">
@@ -394,14 +407,19 @@ function handleClick(x, y) {
             if (Math.hypot(x - t.x, y - t.y) < t.size) {
                 createExplosion(t.x, t.y);
                 targets.splice(i, 1);
-                score += Math.round(100 * (t.size / 20));
+
+                // Score based on target size (smaller = harder = more points)
+                const points = Math.round(150 * (20 / t.size)); // Max ~150 for smallest targets
+                score += points;
                 hits++;
+
                 hit = true;
                 break;
             }
         }
         if (!hit) playMissSound();
 
+        // Update HUD
         document.getElementById('score').textContent = score;
         document.getElementById('hits').textContent = hits;
         const accuracy = totalShots ? Math.round((hits / totalShots) * 100) : 100;
@@ -468,7 +486,6 @@ function startBallsMode() {
         if (timeLeft <= 0) {
             clearInterval(timer);
             gameActive = false;
-            // Back button stays visible after game ends
         }
     }, 1000);
 }
@@ -486,7 +503,6 @@ function startReactionMode() {
     setTimeout(spawnSingleReactionTarget, delay);
 }
 
-// NEW: Back to Menu function
 function backToMenu() {
     gameActive = false;
     currentMode = '';
