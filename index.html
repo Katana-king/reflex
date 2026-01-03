@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Katana Aim Lab </title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+        color: #ffffff;
+        font-family: 'Orbitron', sans-serif;
+        overflow: hidden;
+        height: 100vh;
+        cursor: none !important;
+        user-select: none;
+        background: #0f0019;
+    }
+    canvas { 
+        position: fixed; 
+        top:0; left:0; 
+        z-index: 0;
+    }
+
+    /* CROSSHAIR */
+    #crosshair {
+        position: fixed;
+        width: 30px; height: 30px;
+        pointer-events: none;
+        z-index: 9999;
+        transform: translate(-50%, -50%);
+    }
+    #crosshair::before, #crosshair::after {
+        content: '';
+        position: absolute;
+        background: var(--crosshair-color, #ff00ff);
+        box-shadow: 0 0 12px var(--crosshair-color, #ff00ff), 0 0 20px #ff00ff;
+    }
+    #crosshair::before { width: 2px; height: 24px; top: 3px; left: 14px; }
+    #crosshair::after { width: 24px; height: 2px; top: 14px; left: 3px; }
+    #crosshair-dot {
+        position: absolute;
+        width: 4px; height: 4px;
+        background: #ff00ff;
+        border-radius: 50%;
+        top: 13px; left: 13px;
+        box-shadow: 0 0 10px #ff00ff;
+    }
+
+    #ui { top: 20px; left: 20px; z-index: 100; text-shadow: 0 0 10px #ff00ff; }
+    .value { color: #00ffff; text-shadow: 0 0 15px #00ffff; }
+
+    #reactionResult { 
+        position: fixed; inset: 0; background: rgba(15,0,25,0.9); display: none; flex-direction: column;
+        align-items: center; justify-content: center; z-index: 400; color: #ff00ff; text-shadow: 0 0 25px #ff00ff;
+        font-family: 'Press Start 2P', cursive;
+    }
+    #reactionResult h2 { color: #00ffff; text-shadow: 0 0 30px #00ffff; font-size: 3rem; margin-bottom: 20px; }
+    #reactionResult p { font-size: 1.5rem; }
+    #reactionResult button { margin-top: 40px; padding: 15px 40px; font-size: 1.2rem; background: #000; border: 5px solid #00ffff; color: #00ffff; cursor: pointer; box-shadow: 0 0 20px #00ffff; }
+    #reactionResult button:hover { background: #00ffff; color: #0f0019; }
+
+    #fullscreenBtn { 
+        position: fixed; top: 20px; right: 20px; z-index: 300; padding: 10px 16px;
+        font-family: 'Press Start 2P', cursive; background: #000; border: 4px solid #ff00ff; color: #00ffff;
+        box-shadow: 0 0 20px #ff00ff; text-shadow: 0 0 10px #ff00ff; cursor: pointer;
+    }
+    #fullscreenBtn:hover { background: #ff00ff; color: #0f0019; border-color: #00ffff; box-shadow: 0 0 40px #00ffff; }
+
+    #menuScreen, #difficultyScreen {
+        position: fixed; inset: 0; background: #0f0019; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; z-index: 200; padding: 40px; gap: 30px; text-align: center;
+    }
+    #difficultyScreen { display: none; }
+
+    h1 { 
+        font-family: 'Press Start 2P', cursive; font-size: clamp(2rem, 6vw, 3.5rem); color: #ff00ff;
+        text-shadow: 0 0 20px #ff00ff, 5px 5px 0 #00ffff; letter-spacing: 8px; animation: glitch 1.5s infinite;
+    }
+    @keyframes glitch {
+        0% { text-shadow: 5px 5px 0 #00ffff, -5px -5px 0 #ff00ff; }
+        20% { text-shadow: -5px 5px 0 #00ffff, 5px -5px 0 #ff00ff; }
+        40% { text-shadow: 5px -5px 0 #00ffff, -5px 5px 0 #ff00ff; }
+        60% { text-shadow: -5px -5px 0 #00ffff, 5px 5px 0 #ff00ff; }
+        80% { text-shadow: 5px 5px 0 #00ffff, -5px -5px 0 #ff00ff; }
+        100% { text-shadow: 5px 5px 0 #00ffff, -5px -5px 0 #ff00ff; }
+    }
+
+    .mode-buttons, .difficulty-buttons { display: flex; flex-direction: column; gap: 25px; max-width: 400px; width: 100%; }
+    .mode-btn, .difficulty-btn {
+        padding: clamp(18px, 4vw, 28px) 20px; font-family: 'Press Start 2P', cursive; font-size: clamp(1.1rem, 3.5vw, 1.6rem);
+        background: #000; border: 6px solid #ff00ff; color: #00ffff; cursor: pointer; box-shadow: 0 0 40px #ff00ff; text-shadow: 0 0 15px #00ffff;
+    }
+    .mode-btn:hover, .difficulty-btn:hover { background: #ff00ff; color: #0f0019; border-color: #00ffff; box-shadow: 0 0 60px #00ffff; transform: scale(1.05); }
+
+    .settings label { font-family: 'Press Start 2P', cursive; color: #ffff00; text-shadow: 2px 2px #ff00ff; }
+    input[type="color"] { width: 100px; height: 100px; border: 5px dashed #00ffff; border-radius: 0; cursor: pointer; background: conic-gradient(#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000); box-shadow: 0 0 40px #00ffff; }
+
+    /* NEW: Back to Menu Button */
+    #backToMenuBtn {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 300;
+        padding: 12px 30px;
+        font-family: 'Press Start 2P', cursive;
+        font-size: 1rem;
+        background: #000;
+        border: 4px solid #ff00ff;
+        color: #00ffff;
+        cursor: pointer;
+        box-shadow: 0 0 25px #ff00ff;
+        display: none; /* Hidden by default */
+        pointer-events: auto;
+    }
+    #backToMenuBtn:hover {
+        background: #ff00ff;
+        color: #0f0019;
+        border-color: #00ffff;
+        box-shadow: 0 0 40px #00ffff;
+    }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="crosshair"><div id="crosshair-dot"></div></div>
+<button id="fullscreenBtn">FULLSCREEN</button>
+
+<!-- NEW: Back to Menu Button -->
+<button id="backToMenuBtn">BACK TO MENU</button>
+
+<div id="menuScreen">
+    <h1>KATANA AIM LAB</h1>
+    <p style="font-family:'Press Start 2P';font-size:1.2rem;color:#00ffff;text-shadow:0 0 15px #ff00ff;">TRAIN YOUR PRECISION </p>
+    <div class="settings">
+        <label>CROSSHAIR COLOR</label>
+        <input type="color" id="crosshairPicker" value="#ff00ff">
+    </div>
+    <div class="mode-buttons">
+        <button class="mode-btn" data-mode="balls">BALLS MODE</button>
+        <button class="mode-btn" data-mode="reaction">REACTION TIME</button>
+    </div>
+</div>
+
+<div id="difficultyScreen">
+    <h1>SELECT DIFFICULTY</h1>
+    <div class="difficulty-buttons">
+        <button class="difficulty-btn" data-diff="easy">EASY</button>
+        <button class="difficulty-btn" data-diff="medium">MEDIUM</button>
+        <button class="difficulty-btn" data-diff="hard">HARD</button>
+    </div>
+</div>
+
+<div id="reactionResult">
+    <h2 id="reactionTimeDisplay">000 ms</h2>
+    <p>YOUR REACTION TIME</p>
+    <button id="tryAgainBtn">TRY AGAIN</button>
+</div>
+
+<div id="ui" style="display:none">
+    <div class="stat"><span class="label">SCORE</span><br><span class="value" id="score">0</span></div>
+    <div class="stat"><span class="label">TIME</span><br><span class="value" id="timer">60</span></div>
+    <div class="stat"><span class="label">HITS</span><br><span class="value" id="hits">0</span></div>
+    <div class="stat"><span class="label">ACCURACY</span><br><span class="value" id="acc">100</span>%</div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+window.addEventListener('resize', () => {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+});
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+}
+document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+
+let audioCtx = null;
+function getAudioContext() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+
+const crosshair = document.getElementById('crosshair');
+document.addEventListener('mousemove', e => {
+    crosshair.style.left = e.clientX + 'px';
+    crosshair.style.top = e.clientY + 'px';
+});
+
+// === CRT Effects ===
+let glitchIntensity = 0;
+let screenShake = 0;
+let redFlash = 0;
+
+function drawCRT() {
+    ctx.save();
+
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    for (let y = 0; y < canvas.height; y += 4) {
+        ctx.fillRect(0, y, canvas.width, 2);
+    }
+
+    ctx.globalAlpha = 0.05;
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 150; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        ctx.fillRect(x, y, 1, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    if (glitchIntensity > 0) {
+        ctx.globalAlpha = glitchIntensity * 0.4;
+        for (let i = 0; i < 5; i++) {
+            const y = Math.random() * canvas.height;
+            ctx.fillStyle = Math.random() > 0.5 ? '#ff00ff' : '#00ffff';
+            ctx.fillRect(0, y, canvas.width, 2);
+        }
+        ctx.globalAlpha = 1;
+        glitchIntensity = Math.max(0, glitchIntensity - 0.05);
+    }
+
+    if (screenShake > 0) {
+        const sx = (Math.random() - 0.5) * screenShake;
+        const sy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(sx, sy);
+        screenShake = Math.max(0, screenShake - 1);
+    }
+
+    if (redFlash > 0) {
+        ctx.fillStyle = `rgba(255,0,50,${redFlash})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        redFlash = Math.max(0, redFlash - 0.03);
+    }
+
+    ctx.restore();
+}
+
+// === Explosions ===
+const explosions = [];
+
+function createExplosion(x, y) {
+    screenShake = 15;
+    glitchIntensity = 0.5;
+    for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 4 + Math.random() * 7;
+        const color = Math.random() > 0.5 ? '#ff00ff' : '#00ffff';
+        explosions.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: Math.random() * 7 + 5,
+            life: 45,
+            color
+        });
+    }
+    playHitSound();
+}
+
+function updateExplosions() {
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const e = explosions[i];
+        e.x += e.vx;
+        e.y += e.vy;
+        e.life--;
+        e.size *= 0.93;
+        if (e.life <= 0) {
+            explosions.splice(i, 1);
+            continue;
+        }
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = e.color;
+        ctx.fillStyle = e.color;
+        ctx.globalAlpha = e.life / 45;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+}
+
+// Game state
+let targets = [], score = 0, hits = 0, totalShots = 0, timeLeft = 60, gameActive = false;
+let currentMode = '';
+let reactionStartTime = 0, reactionTimeout = null;
+
+const reactionSettings = {
+    easy:   { minDelay: 1500, maxDelay: 4000, targetSize: 30, maxReactionTime: 3000 },
+    medium: { minDelay: 1000, maxDelay: 3000, targetSize: 20, maxReactionTime: 2000 },
+    hard:   { minDelay: 500,  maxDelay: 2000, targetSize: 12, maxReactionTime: 1500 }
+};
+
+let reactionMinDelay = 1000, reactionMaxDelay = 3000, reactionTargetSize = 20, maxReactionTime = 2000;
+
+const ballsSettings = {
+    easy:   { lifetime: 2200, spawnBase: 1000, maxOnScreen: 6, sizeMin: 18, sizeMax: 30 },
+    medium: { lifetime: 1600, spawnBase: 700,  maxOnScreen: 7, sizeMin: 12, sizeMax: 22 },
+    hard:   { lifetime: 1000, spawnBase: 400,  maxOnScreen: 6, sizeMin: 8,  sizeMax: 16 }
+};
+
+let TARGET_LIFETIME = 1600, spawnBaseDelay = 700, maxTargetsOnScreen = 7, targetSizeMin = 12, targetSizeMax = 22;
+
+const TARGET_COLOR = '#ff00ff';
+const OUTLINE_COLOR = '#00ffff';
+
+let crosshairColor = '#ff00ff';
+document.documentElement.style.setProperty('--crosshair-color', crosshairColor);
+document.getElementById('crosshairPicker').addEventListener('input', (e) => {
+    crosshairColor = e.target.value;
+    document.documentElement.style.setProperty('--crosshair-color', crosshairColor);
+});
+
+function drawTarget(t) {
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = TARGET_COLOR;
+    ctx.fillStyle = TARGET_COLOR;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = OUTLINE_COLOR;
+    ctx.strokeStyle = OUTLINE_COLOR;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+function playHitSound() {
+    const a = getAudioContext();
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(1400, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(300, a.currentTime + 0.15);
+    g.gain.setValueAtTime(0.5, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, a.currentTime + 0.2);
+    o.start(); o.stop(a.currentTime + 0.2);
+}
+
+function playMissSound() {
+    const a = getAudioContext();
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type = 'square';
+    o.frequency.setValueAtTime(200, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(100, a.currentTime + 0.2);
+    g.gain.setValueAtTime(0.4, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, a.currentTime + 0.3);
+    o.start(); o.stop(a.currentTime + 0.3);
+    redFlash = 0.5;
+}
+
+function spawnSingleReactionTarget() {
+    targets = [];
+    const x = Math.random() * (canvas.width - 100) + 50;
+    const y = Math.random() * (canvas.height - 100) + 50;
+    targets.push({ size: reactionTargetSize, x, y, born: Date.now() });
+    reactionStartTime = Date.now();
+
+    reactionTimeout = setTimeout(() => {
+        if (gameActive && targets.length > 0) {
+            document.getElementById('reactionTimeDisplay').textContent = 'TOO SLOW!';
+            document.getElementById('reactionResult').style.display = 'flex';
+            gameActive = false;
+            targets = [];
+            document.getElementById('backToMenuBtn').style.display = 'block';
+            playMissSound();
+        }
+    }, maxReactionTime);
+}
+
+function handleClick(x, y) {
+    if (!gameActive) return;
+
+    if (currentMode === 'balls') {
+        totalShots++;
+        let hit = false;
+        for (let i = targets.length - 1; i >= 0; i--) {
+            const t = targets[i];
+            if (Math.hypot(x - t.x, y - t.y) < t.size) {
+                createExplosion(t.x, t.y);
+                targets.splice(i, 1);
+                score += Math.round(100 * (t.size / 20));
+                hits++;
+                hit = true;
+                break;
+            }
+        }
+        if (!hit) playMissSound();
+
+        document.getElementById('score').textContent = score;
+        document.getElementById('hits').textContent = hits;
+        const accuracy = totalShots ? Math.round((hits / totalShots) * 100) : 100;
+        document.getElementById('acc').textContent = accuracy;
+    } 
+    else if (currentMode === 'reaction') {
+        if (targets.length === 0) {
+            playMissSound();
+            return;
+        }
+        const t = targets[0];
+        if (Math.hypot(x - t.x, y - t.y) < t.size) {
+            clearTimeout(reactionTimeout);
+            createExplosion(t.x, t.y);
+            const reactionTime = Date.now() - reactionStartTime;
+            document.getElementById('reactionTimeDisplay').textContent = reactionTime + ' ms';
+            document.getElementById('reactionResult').style.display = 'flex';
+            gameActive = false;
+            targets = [];
+            document.getElementById('backToMenuBtn').style.display = 'block';
+        } else {
+            clearTimeout(reactionTimeout);
+            document.getElementById('reactionTimeDisplay').textContent = 'MISSED!';
+            document.getElementById('reactionResult').style.display = 'flex';
+            gameActive = false;
+            targets = [];
+            document.getElementById('backToMenuBtn').style.display = 'block';
+            playMissSound();
+        }
+    }
+}
+
+function spawnTarget() {
+    if (currentMode !== 'balls' || !gameActive || targets.length >= maxTargetsOnScreen) {
+        if (gameActive && currentMode === 'balls') setTimeout(spawnTarget, 200);
+        return;
+    }
+    targets.push({
+        size: Math.random() * (targetSizeMax - targetSizeMin) + targetSizeMin,
+        x: Math.random() * (canvas.width - 100) + 50,
+        y: Math.random() * (canvas.height - 100) + 50,
+        born: Date.now()
+    });
+    const ramp = Math.max(200, spawnBaseDelay - (60 - timeLeft) * 8);
+    setTimeout(spawnTarget, ramp + Math.random() * 150);
+}
+
+function startBallsMode() {
+    document.getElementById('ui').style.display = 'block';
+    document.getElementById('difficultyScreen').style.display = 'none';
+    document.getElementById('backToMenuBtn').style.display = 'block';
+    gameActive = true;
+    timeLeft = 60; score = hits = totalShots = 0;
+    targets = []; explosions.length = 0;
+    document.getElementById('score').textContent = '0';
+    document.getElementById('hits').textContent = '0';
+    document.getElementById('acc').textContent = '100';
+    document.getElementById('timer').textContent = '60';
+    spawnTarget();
+
+    const timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer').textContent = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            gameActive = false;
+            // Back button stays visible after game ends
+        }
+    }, 1000);
+}
+
+function startReactionMode() {
+    if (reactionTimeout) clearTimeout(reactionTimeout);
+    document.getElementById('ui').style.display = 'none';
+    document.getElementById('difficultyScreen').style.display = 'none';
+    document.getElementById('reactionResult').style.display = 'none';
+    document.getElementById('backToMenuBtn').style.display = 'block';
+    gameActive = true;
+    targets = []; explosions.length = 0;
+
+    const delay = reactionMinDelay + Math.random() * (reactionMaxDelay - reactionMinDelay);
+    setTimeout(spawnSingleReactionTarget, delay);
+}
+
+// NEW: Back to Menu function
+function backToMenu() {
+    gameActive = false;
+    currentMode = '';
+    document.getElementById('menuScreen').style.display = 'flex';
+    document.getElementById('difficultyScreen').style.display = 'none';
+    document.getElementById('ui').style.display = 'none';
+    document.getElementById('reactionResult').style.display = 'none';
+    document.getElementById('backToMenuBtn').style.display = 'none';
+    targets = [];
+    explosions.length = 0;
+    if (reactionTimeout) clearTimeout(reactionTimeout);
+}
+document.getElementById('backToMenuBtn').addEventListener('click', backToMenu);
+
+function loop() {
+    if (!gameActive && currentMode === '') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = '#0f0019';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        updateExplosions();
+
+        targets.forEach(t => {
+            if (currentMode === 'balls' && Date.now() - t.born > TARGET_LIFETIME) return;
+            drawTarget(t);
+        });
+
+        targets = targets.filter(t => currentMode === 'reaction' || Date.now() - t.born <= TARGET_LIFETIME);
+
+        drawCRT();
+    }
+
+    requestAnimationFrame(loop);
+}
+loop();
+
+// Menu navigation
+document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.onclick = () => {
+        currentMode = btn.dataset.mode;
+        document.getElementById('menuScreen').style.display = 'none';
+        document.getElementById('difficultyScreen').style.display = 'flex';
+    };
+});
+
+document.querySelectorAll('.difficulty-btn').forEach(btn => {
+    btn.onclick = () => {
+        const diff = btn.dataset.diff;
+        if (currentMode === 'balls') {
+            const s = ballsSettings[diff];
+            TARGET_LIFETIME = s.lifetime;
+            spawnBaseDelay = s.spawnBase;
+            maxTargetsOnScreen = s.maxOnScreen;
+            targetSizeMin = s.sizeMin;
+            targetSizeMax = s.sizeMax;
+            startBallsMode();
+        } else if (currentMode === 'reaction') {
+            const s = reactionSettings[diff];
+            reactionMinDelay = s.minDelay;
+            reactionMaxDelay = s.maxDelay;
+            reactionTargetSize = s.targetSize;
+            maxReactionTime = s.maxReactionTime;
+            startReactionMode();
+        }
+    };
+});
+
+document.getElementById('tryAgainBtn').onclick = () => startReactionMode();
+
+canvas.addEventListener('click', e => handleClick(e.clientX, e.clientY));
+</script>
+</body>
+</html>
